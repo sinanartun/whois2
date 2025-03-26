@@ -14,6 +14,7 @@ A modern WHOIS lookup library for Node.js that supports both ESM and CommonJS mo
 - 📊 Clean JSON output
 - 🔍 Built-in WHOIS data parsing
 - ⚡ Fast and lightweight
+- 📝 Includes raw WHOIS data in response
 
 ## Installation
 
@@ -65,8 +66,13 @@ Query WHOIS information for a domain.
 
 #### Returns
 
-- Promise<string>: Raw WHOIS data
-- Promise<object>: Parsed WHOIS data (if using the parser)
+Returns a Promise that resolves to an object containing:
+- `domain_name` (string): The domain name
+- `registrar` (string): The registrar name
+- `creation_date` (string): Domain creation date in ISO format
+- `expiration_date` (string): Domain expiration date in ISO format
+- `updated_date` (string): Last update date in ISO format
+- `raw` (string): Complete raw WHOIS response
 
 ## Examples
 
@@ -98,29 +104,15 @@ const result = await whois('example.com', options);
 
 ### Example Output
 
-#### Raw WHOIS Data
-```text
-Domain Name: EXAMPLE.COM
-Registry Domain ID: 2336799_DOMAIN_COM-VRSN
-Registrar WHOIS Server: whois.iana.org
-Registrar URL: http://res-dom.iana.org
-Updated Date: 2024-08-14T07:01:34Z
-Creation Date: 1995-08-14T04:00:00Z
-Registry Expiry Date: 2025-08-13T04:00:00Z
-Registrar: RESERVED-Internet Assigned Numbers Authority
-Registrar IANA ID: 376
-Name Server: A.IANA-SERVERS.NET
-Name Server: B.IANA-SERVERS.NET
-```
-
-#### Parsed WHOIS Data
+#### Response Object
 ```json
 {
   "domain_name": "EXAMPLE.COM",
   "registrar": "RESERVED-Internet Assigned Numbers Authority",
   "creation_date": "1995-08-14T04:00:00Z",
   "expiration_date": "2025-08-13T04:00:00Z",
-  "updated_date": "2024-08-14T07:01:34Z"
+  "updated_date": "2024-08-14T07:01:34Z",
+  "raw": "Domain Name: EXAMPLE.COM\nRegistry Domain ID: 2336799_DOMAIN_COM-VRSN\n..."
 }
 ```
 

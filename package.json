@@ -1,6 +1,6 @@
 {
   "name": "@sinanartun/whois2",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "A simple WHOIS lookup library for Node.js",
   "license": "MIT",
   "author": "",
