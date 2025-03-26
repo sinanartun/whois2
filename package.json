@@ -1,6 +1,6 @@
 {
   "name": "@sinanartun/whois2",
-  "version": "1.0.13",
+  "version": "1.1.0",
   "description": "A simple WHOIS lookup library for Node.js",
   "license": "MIT",
   "author": "Sinan Artun",
@@ -30,7 +30,8 @@
     "whois",
     "domain",
     "lookup",
-    "dns"
+    "dns",
+    "rdap"
   ],
   "repository": {
     "type": "git",

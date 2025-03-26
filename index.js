@@ -45,8 +45,102 @@ const isRdapRecommended = (data) => {
  * @returns {string} - RDAP URL
  */
 const getRdapUrl = (domain) => {
+  const tld = domain.split('.').pop().toLowerCase();
   // For .com domains, use Verisign's RDAP server
-  return `https://rdap.verisign.com/com/v1/domain/${domain}`;
+  if (tld === 'com') {
+    return `https://rdap.verisign.com/com/v1/domain/${domain}`;
+  }
+  // For other TLDs, you would add their RDAP servers here
+  return `https://rdap.verisign.com/${tld}/v1/domain/${domain}`;
+};
+
+/**
+ * Fetch data from RDAP server
+ * @param {string} domain - Domain name 
+ * @returns {Promise<Object>} - Parsed RDAP data
+ */
+const fetchRdapData = async (domain) => {
+  try {
+    const rdapUrl = getRdapUrl(domain);
+    const response = await fetch(rdapUrl);
+    
+    if (!response.ok) {
+      throw new Error(`RDAP server responded with status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Failed to fetch RDAP data: ${error.message}`);
+  }
+};
+
+/**
+ * Parse RDAP data into standardized format
+ * @param {Object} rdapData - Raw RDAP response
+ * @returns {Object} - Parsed RDAP data in standardized format
+ */
+const parseRdapData = (rdapData) => {
+  if (!rdapData) return {};
+  
+  const result = {
+    domain_name: null,
+    registrar: null,
+    creation_date: null,
+    expiration_date: null,
+    updated_date: null,
+    name_servers: [],
+    status: [],
+    source: 'rdap'
+  };
+  
+  // Extract domain name
+  if (rdapData.ldhName) {
+    result.domain_name = rdapData.ldhName;
+  }
+  
+  // Extract registrar
+  if (rdapData.entities && rdapData.entities.length > 0) {
+    for (const entity of rdapData.entities) {
+      if (entity.roles && entity.roles.includes('registrar')) {
+        if (entity.vcardArray && entity.vcardArray[1] && entity.vcardArray[1].length > 0) {
+          for (const vcardEntry of entity.vcardArray[1]) {
+            if (vcardEntry[0] === 'fn') {
+              result.registrar = vcardEntry[3];
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Extract dates
+  if (rdapData.events && rdapData.events.length > 0) {
+    for (const event of rdapData.events) {
+      if (event.eventAction === 'registration' && event.eventDate) {
+        result.creation_date = event.eventDate;
+      } else if (event.eventAction === 'expiration' && event.eventDate) {
+        result.expiration_date = event.eventDate;
+      } else if ((event.eventAction === 'last changed' || event.eventAction === 'last update') && event.eventDate) {
+        result.updated_date = event.eventDate;
+      }
+    }
+  }
+  
+  // Extract nameservers
+  if (rdapData.nameservers && rdapData.nameservers.length > 0) {
+    result.name_servers = rdapData.nameservers.map(ns => ns.ldhName);
+  }
+  
+  // Extract status
+  if (rdapData.status && rdapData.status.length > 0) {
+    result.status = rdapData.status;
+  }
+  
+  // Extract the raw JSON as a string
+  result.raw = JSON.stringify(rdapData);
+  
+  return result;
 };
 
 const queryWhois = async (domain, options = {}) => {
@@ -70,7 +164,8 @@ const queryWhois = async (domain, options = {}) => {
     follow = false,
     retryCount = 3,
     retryDelay = 1000,
-    handleRateLimit = true
+    handleRateLimit = true,
+    useRdapOnRateLimit = true
   } = options;
   
   try {
@@ -83,6 +178,24 @@ const queryWhois = async (domain, options = {}) => {
         
         // Check for rate limiting
         const rateLimitDelay = extractRateLimit(whoisData);
+        const rdapRecommended = isRdapRecommended(whoisData);
+        
+        // If rate limited and we're configured to use RDAP on rate limit
+        if ((rateLimitDelay || rdapRecommended) && useRdapOnRateLimit) {
+          console.warn(`WHOIS rate limited or deprecated. Switching to RDAP for ${domain}`);
+          try {
+            const rdapData = await fetchRdapData(domain);
+            return { 
+              data: parseRdapData(rdapData), 
+              protocol: 'rdap',
+              raw: JSON.stringify(rdapData)
+            };
+          } catch (rdapError) {
+            console.warn(`RDAP fetch failed: ${rdapError.message}. Falling back to WHOIS.`);
+          }
+        }
+        
+        // If rate limited and we should handle it with retries
         if (rateLimitDelay && handleRateLimit && attempts < retryCount - 1) {
           const delayMs = rateLimitDelay * 1000;
           console.warn(`WHOIS rate limit hit. Waiting ${rateLimitDelay} seconds before retry.`);
@@ -91,30 +204,47 @@ const queryWhois = async (domain, options = {}) => {
           continue;
         }
         
-        // Check if RDAP is recommended
-        if (isRdapRecommended(whoisData)) {
-          const rdapUrl = getRdapUrl(domain);
-          console.warn(`WHOIS service for ${domain} is being retired. Consider switching to RDAP: ${rdapUrl}`);
-          // Still return the WHOIS data even if it suggests using RDAP
-        }
-        
         if (follow) {
           const referralMatch = whoisData.match(/Registrar WHOIS Server:\s+([^\s]+)/i);
           if (referralMatch && referralMatch[1] && referralMatch[1] !== whoisServer) {
             const referralServer = referralMatch[1];
             if (!referralServer.startsWith('http')) {
-              return await queryWhoisServer(domain, referralServer, timeout);
+              return { 
+                data: whoisData, 
+                protocol: 'whois',
+                raw: whoisData
+              };
             }
           }
         }
         
-        return whoisData;
+        return { 
+          data: whoisData, 
+          protocol: 'whois',
+          raw: whoisData
+        };
       } catch (error) {
         lastError = error;
         attempts++;
         if (attempts < retryCount) {
           await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
+      }
+    }
+    
+    // If all WHOIS attempts failed, try RDAP as a last resort
+    if (useRdapOnRateLimit) {
+      try {
+        console.warn(`All WHOIS attempts failed. Trying RDAP as fallback for ${domain}`);
+        const rdapData = await fetchRdapData(domain);
+        return { 
+          data: parseRdapData(rdapData), 
+          protocol: 'rdap',
+          raw: JSON.stringify(rdapData)
+        };
+      } catch (rdapError) {
+        // If RDAP fails too, throw the original error
+        console.warn(`RDAP fallback failed: ${rdapError.message}`);
       }
     }
     
@@ -159,21 +289,35 @@ const parseWhois = (whoisData) => {
 };
 
 const whois = async (domain, options = {}) => {
-  const rawData = await queryWhois(domain, options);
-  const parsedData = parseWhois(rawData);
+  const result = await queryWhois(domain, options);
   
-  // Check for rate limiting and RDAP
-  const rateLimit = extractRateLimit(rawData);
-  const rdapRecommended = isRdapRecommended(rawData);
-  
-  return {
-    ...parsedData,
-    raw: rawData,
-    rate_limited: !!rateLimit,
-    rate_limit_seconds: rateLimit || 0,
-    rdap_recommended: rdapRecommended,
-    rdap_url: rdapRecommended ? getRdapUrl(domain) : null
-  };
+  if (result.protocol === 'rdap') {
+    // RDAP data is already parsed
+    return {
+      ...result.data,
+      raw: result.raw,
+      rate_limited: false,
+      rate_limit_seconds: 0,
+      rdap_recommended: true,
+      rdap_url: getRdapUrl(domain),
+      protocol: 'rdap'
+    };
+  } else {
+    // Parse WHOIS data
+    const parsedData = parseWhois(result.data);
+    const rateLimit = extractRateLimit(result.data);
+    const rdapRecommended = isRdapRecommended(result.data);
+    
+    return {
+      ...parsedData,
+      raw: result.data,
+      rate_limited: !!rateLimit,
+      rate_limit_seconds: rateLimit || 0,
+      rdap_recommended: rdapRecommended,
+      rdap_url: rdapRecommended ? getRdapUrl(domain) : null,
+      protocol: 'whois'
+    };
+  }
 };
 
-export { whois, queryWhois, parseWhois };
+export { whois, queryWhois, parseWhois, fetchRdapData, parseRdapData };
