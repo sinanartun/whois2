@@ -3,6 +3,8 @@
 A modern WHOIS lookup library for Node.js that supports both ESM and CommonJS modules.
 
 [![npm version](https://img.shields.io/npm/v/@sinanartun/whois2.svg)](https://www.npmjs.com/package/@sinanartun/whois2)
+[![npm downloads](https://img.shields.io/npm/dm/@sinanartun/whois2.svg)](https://www.npmjs.com/package/@sinanartun/whois2)
+[![npm downloads](https://img.shields.io/npm/dt/@sinanartun/whois2.svg)](https://www.npmjs.com/package/@sinanartun/whois2)
 
 ## Features
 
