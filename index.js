@@ -142,7 +142,11 @@ const normalizeDate = (dateStr) => {
 
 const whois = async (domain, options = {}) => {
   const rawData = await queryWhois(domain, options);
-  return parseWhois(rawData);
+  const parsedData = parseWhois(rawData);
+  return {
+    ...parsedData,
+    raw: rawData
+  };
 };
 
 export { whois, queryWhois, parseWhois };

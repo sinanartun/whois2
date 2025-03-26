@@ -11,7 +11,7 @@ async function createCjsVersion() {
     
     let cjsCode = esmCode
       .replace(/import\s+\{\s*Socket\s*\}\s+from\s+['"]net['"];/, 'const { Socket } = require("net");')
-      .replace(/export\s+\{\s*queryWhois,\s*parseWhois\s*\};/, 'module.exports = { queryWhois, parseWhois };');
+      .replace(/export\s+\{\s*whois,\s*queryWhois,\s*parseWhois\s*\};/, 'module.exports = { whois, queryWhois, parseWhois };');
     
     await writeFile(join(__dirname, 'dist', 'cjs', 'index.js'), cjsCode, 'utf8');
     console.log('✅ Successfully built CommonJS version');
