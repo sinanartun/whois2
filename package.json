@@ -1,6 +1,6 @@
 {
   "name": "@sinanartun/whois2",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "description": "A simple WHOIS lookup library for Node.js",
   "license": "MIT",
   "author": "",
@@ -24,12 +24,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/whois2.git"
+    "url": "git+https://github.com/sinanartun/whois2.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/whois2/issues"
+    "url": "https://github.com/sinanartun/whois2/issues"
   },
-  "homepage": "https://github.com/yourusername/whois2#readme",
+  "homepage": "https://github.com/sinanartun/whois2#readme",
   "engines": {
     "node": ">=14.16.0"
   }

@@ -96,6 +96,34 @@ const options = {
 const result = await whois('example.com', options);
 ```
 
+### Example Output
+
+#### Raw WHOIS Data
+```text
+Domain Name: EXAMPLE.COM
+Registry Domain ID: 2336799_DOMAIN_COM-VRSN
+Registrar WHOIS Server: whois.iana.org
+Registrar URL: http://res-dom.iana.org
+Updated Date: 2024-08-14T07:01:34Z
+Creation Date: 1995-08-14T04:00:00Z
+Registry Expiry Date: 2025-08-13T04:00:00Z
+Registrar: RESERVED-Internet Assigned Numbers Authority
+Registrar IANA ID: 376
+Name Server: A.IANA-SERVERS.NET
+Name Server: B.IANA-SERVERS.NET
+```
+
+#### Parsed WHOIS Data
+```json
+{
+  "domain_name": "EXAMPLE.COM",
+  "registrar": "RESERVED-Internet Assigned Numbers Authority",
+  "creation_date": "1995-08-14T04:00:00Z",
+  "expiration_date": "2025-08-13T04:00:00Z",
+  "updated_date": "2024-08-14T07:01:34Z"
+}
+```
+
 ## Requirements
 
 - Node.js >= 14.16.0
