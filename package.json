@@ -1,9 +1,9 @@
 {
   "name": "@sinanartun/whois2",
-  "version": "1.0.9",
+  "version": "1.0.13",
   "description": "A simple WHOIS lookup library for Node.js",
   "license": "MIT",
-  "author": "",
+  "author": "Sinan Artun",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -12,9 +12,19 @@
       "require": "./dist/cjs/index.js"
     }
   },
+  "files": [
+    "index.js",
+    "whois-regex.js",
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist && mkdir -p dist/cjs && node build.js"
+    "build": "rm -rf dist && mkdir -p dist/cjs && node build.js",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "whois",

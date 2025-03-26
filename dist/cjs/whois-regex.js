@@ -3,7 +3,7 @@
  * @param {string} whoisData - Raw WHOIS data text
  * @return {object} - JSON object with extracted fields
  */
-export const WHOIS_PATTERNS = {
+const WHOIS_PATTERNS = {
   // Domain name patterns - handle various formats
   domain_name: /(?:Domain Name|Domain):\s*([^\s\n]+)/i,
   
@@ -48,7 +48,7 @@ export const WHOIS_PATTERNS = {
   tech_country: /(?:Tech Country|Technical Contact Country):\s*([^\n]+)/i
 };
 
-export function extractWhoisData(whoisData) {
+function extractWhoisData(whoisData) {
   if (!whoisData) return {};
   
   const result = {
@@ -141,7 +141,7 @@ function normalizeDate(dateStr) {
  * @param {string} whoisData - Raw WHOIS data
  * @return {object} - All key-value pairs found
  */
-export function extractAllFields(whoisData) {
+function extractAllFields(whoisData) {
   if (!whoisData) return {};
   
   const result = {};
@@ -180,7 +180,7 @@ export function extractAllFields(whoisData) {
   return result;
 }
 
-export function getRegexPatterns() {
+function getRegexPatterns() {
   return WHOIS_PATTERNS;
 }
 
