@@ -1,16 +1,8 @@
 const { Socket } = require("net");
 
-const getWhoisServer = (tld) => {
-  const whoisServers = {
-    com: "whois.verisign-grs.com",
-    net: "whois.verisign-grs.com",
-    org: "whois.pir.org",
-    io: "whois.nic.io",
-    info: "whois.afilias.net",
-    xyz: "whois.nic.xyz",
-    dev: "whois.nic.google",
-  };
-  return whoisServers[tld] || "whois.iana.org";
+const getWhoisServer = () => {
+  // For .com domains, always use the official Verisign WHOIS server
+  return "whois.verisign-grs.com";
 };
 
 const queryWhois = async (domain, options = {}) => {
@@ -24,7 +16,11 @@ const queryWhois = async (domain, options = {}) => {
   }
   
   const tld = domainParts[domainParts.length - 1];
-  const whoisServer = getWhoisServer(tld);
+  if (tld.toLowerCase() !== 'com') {
+    throw new Error('This library only supports .com domains');
+  }
+  
+  const whoisServer = getWhoisServer();
   const { 
     timeout = 5000, 
     follow = false 
@@ -82,23 +78,66 @@ const queryWhoisServer = (domain, server, timeout) => {
 const parseWhois = (whoisData) => {
   if (!whoisData) return {};
   
-  const result = {};
-  const lines = whoisData.split('\n');
+  const result = {
+    domain_name: null,
+    registrar: null,
+    creation_date: null,
+    expiration_date: null,
+    updated_date: null
+  };
   
-  for (const line of lines) {
-    if (line.startsWith('%') || line.startsWith('#') || !line.trim()) continue;
-    
-    const match = line.match(/^\s*([^:]+):\s*(.*)$/);
-    if (match) {
-      const [, key, value] = match;
-      const cleanKey = key.trim().replace(/\s+/g, '_').toLowerCase();
-      if (cleanKey && value.trim()) {
-        result[cleanKey] = value.trim();
-      }
-    }
+  // Domain name pattern - .com specific format
+  const domainNameMatch = whoisData.match(/Domain Name:\s*([^\s\n]+)/i);
+  if (domainNameMatch && domainNameMatch[1]) {
+    result.domain_name = domainNameMatch[1].trim();
+  }
+  
+  // Registrar pattern - .com specific format
+  const registrarPattern = /Registrar:\s*([^\n]+)/i;
+  const registrarMatch = whoisData.match(registrarPattern);
+  if (registrarMatch && registrarMatch[1]) {
+    result.registrar = registrarMatch[1].trim();
+  }
+  
+  // Creation date - .com specific format
+  const creationPattern = /Creation Date:\s*([^\n]+)/i;
+  const creationMatch = whoisData.match(creationPattern);
+  if (creationMatch && creationMatch[1]) {
+    result.creation_date = normalizeDate(creationMatch[1].trim());
+  }
+  
+  // Expiration date - .com specific format
+  const expirationPattern = /Registry Expiry Date:\s*([^\n]+)/i;
+  const expirationMatch = whoisData.match(expirationPattern);
+  if (expirationMatch && expirationMatch[1]) {
+    result.expiration_date = normalizeDate(expirationMatch[1].trim());
+  }
+  
+  // Updated date - .com specific format
+  const updatedPattern = /Updated Date:\s*([^\n]+)/i;
+  const updatedMatch = whoisData.match(updatedPattern);
+  if (updatedMatch && updatedMatch[1]) {
+    result.updated_date = normalizeDate(updatedMatch[1].trim());
   }
   
   return result;
+};
+
+const normalizeDate = (dateStr) => {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  try {
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  } catch (e) {
+    // If conversion fails, return the original string
+  }
+  
+  return dateStr;
 };
 
 module.exports = { queryWhois, parseWhois };
